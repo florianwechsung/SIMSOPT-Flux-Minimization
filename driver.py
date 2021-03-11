@@ -1,6 +1,10 @@
 from ncsx import CoilCollection
 import numpy as np
-from mayavi import mlab
+try:
+    from mayavi import mlab
+    has_mayavi = True
+except:
+    has_mayavi = False
 
 from simsopt.geo.surfacerzfourier import SurfaceRZFourier
 from simsopt.geo.biotsavart import BiotSavart
@@ -116,6 +120,8 @@ def plot_2d(Bcoil_n):
     plt.show()
 
 def plot_3d(B):
+    if not has_mayavi:
+        return
     for c in stellarator.coils:
         c.plot_mayavi(show=False)
     for c in extra_coils:
