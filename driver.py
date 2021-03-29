@@ -9,7 +9,7 @@ except:
 from simsopt.geo.surfacerzfourier import SurfaceRZFourier
 from simsopt.geo.biotsavart import BiotSavart
 from simsopt.geo.curvexyzfourier import CurveXYZFourier
-from simsopt.geo.objectives import CurveLength
+from simsopt.geo.coilobjectives import CurveLength
 
 import coilpy
 
@@ -65,7 +65,7 @@ for i, (m, n) in enumerate(zip(focusplasma['bnormal']['xm'], focusplasma['bnorma
     # bnc[m, n+ntor] = focusplasma['bnormal']['bnc'][i]
     bns[m, n+ntor] = focusplasma['bnormal']['bns'][i]
 
-s = SurfaceRZFourier(mpol, ntor, nfp, True, phis, thetas)
+s = SurfaceRZFourier(mpol=mpol, ntor=ntor, nfp=nfp, stellsym=True, quadpoints_phi=phis, quadpoints_theta=thetas)
 # s.zc[:,:] = bnc
 s.zs[:,:] = bns
 Bplasma_n = s.gamma()[:,:,2]
@@ -78,7 +78,7 @@ for i, (m, n) in enumerate(zip(focusplasma['surface']['xm'], focusplasma['surfac
     rc[m, n+ntor] = focusplasma['surface']['rbc'][i]
     zs[m, n+ntor] = focusplasma['surface']['zbs'][i]
 
-s = SurfaceRZFourier(mpol, ntor, 3, True, phis, thetas)
+s = SurfaceRZFourier(mpol=mpol, ntor=ntor, nfp=nfp, stellsym=True, quadpoints_phi=phis, quadpoints_theta=thetas)
 s.rc[:,:] = rc
 s.zs[:,:] = zs
 
@@ -94,7 +94,8 @@ absn = np.linalg.norm(n, axis=2)
 unitn = n * (1./absn)[:,:,None]
 
 bs = BiotSavart(stellarator.coils, stellarator.currents)
-Bcoil_n = np.sum(bs.set_points(xyz.reshape((xyz.shape[0]*xyz.shape[1], 3))).B().reshape(xyz.shape) * unitn, axis=2)
+bs.set_points(xyz.reshape((xyz.shape[0]*xyz.shape[1], 3)))
+Bcoil_n = np.sum(bs.B().reshape(xyz.shape) * unitn, axis=2)
 
 bsextra = BiotSavart(extra_coils, extra_currents)
 B = bsextra.set_points(xyz.reshape((xyz.shape[0]*xyz.shape[1], 3))).B().reshape(xyz.shape)
