@@ -6,11 +6,13 @@ try:
 except:
     has_mayavi = False
 
+from simsopt.geo.curve import curves_to_vtk
 from simsopt.geo.surfacerzfourier import SurfaceRZFourier
 from simsopt.geo.biotsavart import BiotSavart, Current, Coil
 from simsopt.geo.curvexyzfourier import CurveXYZFourier
 from simsopt.geo.curveobjectives import CurveLength
 from simsopt.geo.coilcollection import coils_via_symmetries
+from simsopt.geo.curveperturbed import CurvePerturbed, GaussianSampler
 from simsopt._core.graph_optimizable import CPPOptimizable
 from simsopt._core.derivative import Derivative
 
@@ -22,7 +24,8 @@ import coilpy
 focuscoils = coilpy.coils.Coil().read_makegrid('coils.c09r00').data
 modular_curves = []
 modular_currents = []
-coil_order = 10
+coil_order = 15
+ppp = 20
 
 extra_curves = []
 extra_currents = []
@@ -30,8 +33,10 @@ for i, c in enumerate(focuscoils):
     if i < 3:
         xyz = np.vstack((c.x, c.y, c.z)).T[:-1,:]
         n = xyz.shape[0]
-        newcurve = CurveXYZFourier(np.linspace(0, 1, n, endpoint=False), coil_order)
-        newcurve.least_squares_fit(xyz)
+        newcurve_ = CurveXYZFourier(np.linspace(0, 1, n, endpoint=False), coil_order)
+        newcurve_.least_squares_fit(xyz)
+        newcurve = CurveXYZFourier(np.linspace(0, 1, coil_order*ppp, endpoint=False), coil_order)
+        newcurve.x = newcurve_.x
         modular_curves.append(newcurve)
         modular_currents.append(Current(c.I))
     elif i > 17:
@@ -180,7 +185,33 @@ class SquaredFlux(CPPOptimizable):
 
 Jflux = SquaredFlux(s, Bplasma_n - Bextra_n, bs)
 alpha = 1e-4
+sampler = GaussianSampler(modular_curves[0].quadpoints, 0.003, 0.3, n_derivs=1)
+Nsamples = 64
+J_perturbed = []
+for i in range(Nsamples):
+    perturbed_modular_coils = [Coil(CurvePerturbed(mc.curve, sampler), mc.current) for mc in modular_coils]
+    J_perturbed.append(SquaredFlux(s, Bplasma_n - Bextra_n, BiotSavart(perturbed_modular_coils)))
 
+J_perturbed_oos = []
+for i in range(Nsamples):
+    perturbed_modular_coils = [Coil(CurvePerturbed(mc.curve, sampler), mc.current) for mc in modular_coils]
+    J_perturbed_oos.append(SquaredFlux(s, Bplasma_n - Bextra_n, BiotSavart(perturbed_modular_coils)))
+
+def fun_stoch(dofs):
+    Jflux.x = dofs
+    J = Jflux.J()
+    dJ = Jflux.dJ()
+    for Jp in J_perturbed:
+        J += (1/Nsamples) * Jp.J()
+        dJ += (1/Nsamples) * Jp.dJ()
+    print(f"J={J}")
+    if alpha > 0:
+        J += alpha * sum([Jcl.J() for Jcl in coil_lengths])
+        for Jcl in coil_lengths:
+            dJ += alpha * Jcl.dJ_graph()
+    grad = np.concatenate([dJ.data[d] for d in dJ.data])
+    return J, grad
+np.set_printoptions(precision=20)
 def fun(dofs):
     Jflux.x = dofs
     J = Jflux.J()
@@ -192,26 +223,40 @@ def fun(dofs):
             dJ += alpha * Jcl.dJ_graph()
     grad = np.concatenate([dJ.data[d] for d in dJ.data])
     return J, grad
+
 print("""
 ################################################################################
 ### Perform a Taylor test ######################################################
 ################################################################################
 """)
+f = fun_stoch
 dofs = Jflux.x
+np.random.seed(1)
 h = np.random.uniform(size=dofs.shape)
-J0, dJ0 = fun(dofs)
+J0, dJ0 = f(dofs)
 dJh = sum(dJ0 * h)
-for eps in [1e-4, 1e-5, 1e-6, 1e-7, 1e-8, 1e-9]:
-    J1, _ = fun(dofs + eps*h)
+for eps in [1e-4, 1e-5, 1e-6]:#, 1e-6, 1e-7, 1e-8, 1e-9]:
+    J1, _ = f(dofs + eps*h)
     print("err", (J1-J0)/eps - dJh)
 print("""    
 ################################################################################
 ### Run some optimisation ######################################################
 ################################################################################
 """)
-dofs += 1e-4 * np.random.standard_normal(size=dofs.shape)
+# dofs += 1e-4 * np.random.standard_normal(size=dofs.shape)
 from scipy.optimize import minimize
-res = minimize(fun, dofs, jac=True, method='L-BFGS-B', options={'maxiter': 200, 'maxcor': 400}, tol=1e-15)
-Bcoil_n = np.sum(bs.set_points(xyz.reshape((xyz.shape[0]*xyz.shape[1], 3))).B().reshape(xyz.shape) * unitn, axis=2)
+print("fun")
+Jflux.x = dofs
+curves_to_vtk(modular_curves, '/tmp/init')
+print("OOS init", sum(Jp.J() for Jp in J_perturbed_oos)/len(J_perturbed_oos))
+res = minimize(fun, dofs, jac=True, method='L-BFGS-B', options={'maxiter': 100, 'maxcor': 400}, tol=1e-15)
+Jflux.x = res.x
+curves_to_vtk(modular_curves, '/tmp/det')
+print("OOS det ", sum(Jp.J() for Jp in J_perturbed_oos)/len(J_perturbed_oos))
+res = minimize(fun_stoch, dofs, jac=True, method='L-BFGS-B', options={'maxiter': 100, 'maxcor': 400}, tol=1e-15)
+Jflux.x = res.x
+curves_to_vtk(modular_curves, '/tmp/stoch')
+print("OOS stoch", sum(Jp.J() for Jp in J_perturbed_oos)/len(J_perturbed_oos))
+# Bcoil_n = np.sum(bs.set_points(xyz.reshape((xyz.shape[0]*xyz.shape[1], 3))).B().reshape(xyz.shape) * unitn, axis=2)
 # plot_2d(Bcoil_n)
 # plot_3d(Bplasma_n - (Bcoil_n + Bextra_n))

@@ -2,7 +2,7 @@
 
 ## Requirements
 
-    pip3 install simsopt coilpy xarray matplotlib h5py
+    pip3 install simsopt h5py xarray matplotlib coilpy 
     
 And ideally
 
