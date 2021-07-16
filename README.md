@@ -8,3 +8,5 @@
 ## Running the code
 
     python3 driver.py
+
+This will create output `/tmp/init.{png, vts, vtu}` and `/tmp/det.{png, vts, vtu}`.

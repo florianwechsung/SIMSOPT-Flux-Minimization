@@ -8,15 +8,16 @@ from simsopt._core.graph_optimizable import Optimizable
 
 # Pick which parts of NCSX we want to optimize for. e.g. we could keep the coil shape constant, but only optimize for currents
 # or keep the circular coils constant, and optimize for shape and current of the modular coils
-FIX_CIRCULAR_CURRENT = False
-FIX_CIRCULAR_CURVE = True
-FIX_MODULAR_CURRENT = False
-FIX_MODULAR_CURVE = True
-ALPHA = 1e-6
-COIL_ORDER = 15
-PPP = 20
-NPHI = 100
-NTHETA = 100
+FIX_MODULAR_CURRENT = False # keep currents of modular coils fixed
+FIX_MODULAR_CURVE = True # keep shape of modular coils fixed
+FIX_CIRCULAR_CURRENT = False # keep currents in circular coils fixed
+FIX_CIRCULAR_CURVE = True # keep shape of circular coils fixed
+
+ALPHA = 1e-6 # Total objective is SquaredFlux + alpha * sum(coil_lengths)
+COIL_ORDER = 15 # max order of modular coils
+PPP = 20 # points-per-period quadrature order for modular coils
+NPHI = 100 # number of quadrature points in phi on surface
+NTHETA = 100 # number of quadrature points in theta on surface
 
 modular_coils, extra_coils = get_NCSX_coils(COIL_ORDER, PPP, FIX_MODULAR_CURVE, FIX_MODULAR_CURRENT, FIX_CIRCULAR_CURVE, FIX_CIRCULAR_CURRENT)
 s, Bplasma_n = get_NCSX_plasma_field(NPHI, NTHETA)
