@@ -1,13 +1,10 @@
 # A simple flux minimisation code using SIMSOPT and coilpy
 
-## Requirements
+## Requirements (in addition to SIMSOPT)
 
-    pip3 install simsopt h5py xarray matplotlib coilpy 
+    pip3 install h5py xarray matplotlib pyevtk
+    pip3 install coilpy 
     
-And ideally
-
-    pip3 install mayavi
-
 ## Running the code
 
     python3 driver.py
