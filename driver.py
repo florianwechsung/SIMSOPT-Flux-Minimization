@@ -9,8 +9,8 @@ from simsopt._core.graph_optimizable import Optimizable
 # Pick which parts of NCSX we want to optimize for. e.g. we could keep the coil shape constant, but only optimize for currents
 # or keep the circular coils constant, and optimize for shape and current of the modular coils
 FIX_MODULAR_CURRENT = False # keep currents of modular coils fixed
-FIX_MODULAR_CURVE = True # keep shape of modular coils fixed
-FIX_CIRCULAR_CURRENT = False # keep currents in circular coils fixed
+FIX_MODULAR_CURVE = False # keep shape of modular coils fixed
+FIX_CIRCULAR_CURRENT = True # keep currents in circular coils fixed
 FIX_CIRCULAR_CURVE = True # keep shape of circular coils fixed
 
 ALPHA = 1e-6 # Total objective is SquaredFlux + alpha * sum(coil_lengths)

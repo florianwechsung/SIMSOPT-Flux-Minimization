@@ -184,3 +184,4 @@ class SquaredFlux(Optimizable):
         dJdB = (B_n[...,None] * unitn * absn[...,None])/absn.size
         dJdB = dJdB.reshape((-1, 3))
         return self.field.B_vjp(dJdB)
+
